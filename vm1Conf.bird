@@ -1,0 +1,42 @@
+log stderr all;
+watchdog warning 5 s;
+watchdog timeout 30 s;
+ipv4 table main;
+
+protocol device {}
+
+protocol direct {
+        disabled;
+        ipv4;
+}
+
+filter export_kernel {
+        if source = RTS_INHERIT then reject;
+        if !defined( krt_metric ) then krt_metric = 0;
+        if defined( ospf_metric1 ) then krt_metric = krt_metric + ospf_metric1;
+        if defined( ospf_metric2 ) then krt_metric = krt_metric + ospf_metric2;
+        accept;
+};
+
+protocol kernel {
+        debug all;
+        ipv4 {
+                import none;
+                export filter export_kernel;
+        };
+        metric 0;
+}
+
+protocol static {
+    ipv4;
+    debug all;
+    route 10.0.0.1/32 via "vtun0";
+    route 10.0.0.2/32 via "vtun0";
+}
+
+protocol bgp uplink {
+    local 192.168.2.2 as 65000;
+    neighbor 192.168.2.3 as 65000;
+    ipv4 { import all; export where source = RTS_STATIC; };
+}
+
